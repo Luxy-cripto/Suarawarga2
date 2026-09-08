@@ -38,6 +38,7 @@ const menuItems = [
   { key: 'reports', label: 'Laporan', icon: '📋', to: '/admin/laporan' },
   { key: 'users', label: 'Pengguna', icon: '👥', to: '/admin/users' },
   { key: 'categories', label: 'Kategori', icon: '🏷️', to: '/admin/kategori' },
+  { key: 'feedback', label: 'Masukan & Bug', icon: '💬', to: '/admin/feedback' },
   { key: 'settings', label: 'Pengaturan', icon: '⚙️', to: '/admin/settings' },
 ]
 
@@ -46,6 +47,7 @@ const activeKey = computed(() => {
   if (route.path.startsWith('/admin/laporan')) return 'reports'
   if (route.path.startsWith('/admin/users')) return 'users'
   if (route.path.startsWith('/admin/kategori')) return 'categories'
+  if (route.path.startsWith('/admin/feedback')) return 'feedback'
   if (route.path.startsWith('/admin/settings')) return 'settings'
   return null
 })
