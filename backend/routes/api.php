@@ -8,34 +8,79 @@ use App\Http\Controllers\TanggapanController;
 use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TanggapanReactionController;
+use App\Http\Controllers\FeedbackController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 
-// =========================
+// ======================================================
 // AUTH
-// =========================
+// ======================================================
 
+// Register
 Route::post('/register', [AuthController::class, 'register']);
+
+// Login
 Route::post('/login', [AuthController::class, 'login']);
+
+// Lupa password
 Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
+
+// Reset password
 Route::post('/reset-password', [ForgotPasswordController::class, 'reset']);
 
-// =========================
+
+// ======================================================
 // PUBLIC
 // Tidak perlu login
-// =========================
+// ======================================================
+
+// ------------------------------------------------------
+// FEEDBACK PUBLIC / TESTIMONI
+// ------------------------------------------------------
+
+Route::get(
+    '/feedbacks/public',
+    [FeedbackController::class, 'publicTestimonials']
+);
+
+
+// ------------------------------------------------------
+// LAPORAN PUBLIC
+// ------------------------------------------------------
 
 // Semua laporan
-Route::get('/laporans', [LaporanController::class, 'index']);
+Route::get(
+    '/laporans',
+    [LaporanController::class, 'index']
+);
 
 // Detail laporan
-Route::get('/laporans/{laporan}', [LaporanController::class, 'show']);
+Route::get(
+    '/laporans/{laporan}',
+    [LaporanController::class, 'show']
+);
 
-// Daftar kategori
-Route::get('/kategoris', [KategoriController::class, 'index']);
+
+// ------------------------------------------------------
+// KATEGORI PUBLIC
+// ------------------------------------------------------
+
+// Semua kategori
+Route::get(
+    '/kategoris',
+    [KategoriController::class, 'index']
+);
 
 // Detail kategori
-Route::get('/kategoris/{kategori}', [KategoriController::class, 'show']);
+Route::get(
+    '/kategoris/{kategori}',
+    [KategoriController::class, 'show']
+);
+
+
+// ------------------------------------------------------
+// TANGGAPAN / KOMENTAR PUBLIC
+// ------------------------------------------------------
 
 // Semua komentar pada laporan
 Route::get(
@@ -44,21 +89,23 @@ Route::get(
 );
 
 
-// =========================
-// ROUTE YANG BUTUH LOGIN
-// =========================
+// ======================================================
+// ROUTE YANG MEMBUTUHKAN LOGIN
+// ======================================================
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // =========================
+    // ==================================================
     // USER LOGIN
-    // =========================
+    // ==================================================
 
+    // Data user yang sedang login
     Route::get('/user', function (Request $request) {
         return response()->json(
             $request->user()
         );
     });
+
 
     // Logout
     Route::post(
@@ -66,17 +113,27 @@ Route::middleware('auth:sanctum')->group(function () {
         [AuthController::class, 'logout']
     );
 
-    // =========================
-    // PROFIL (butuh login)
-    // =========================
 
-    Route::get('/profile', [AuthController::class, 'profile']);
-    Route::post('/profile', [AuthController::class, 'updateProfile']);
+    // ==================================================
+    // PROFIL
+    // ==================================================
+
+    // Lihat profil
+    Route::get(
+        '/profile',
+        [AuthController::class, 'profile']
+    );
+
+    // Update profil
+    Route::post(
+        '/profile',
+        [AuthController::class, 'updateProfile']
+    );
 
 
-    // =========================
+    // ==================================================
     // LAPORAN
-    // =========================
+    // ==================================================
 
     // Membuat laporan
     Route::post(
@@ -84,13 +141,13 @@ Route::middleware('auth:sanctum')->group(function () {
         [LaporanController::class, 'store']
     );
 
-    // Update laporan
+    // Update laporan menggunakan PUT
     Route::put(
         '/laporans/{laporan}',
         [LaporanController::class, 'update']
     );
 
-    // Update laporan PATCH
+    // Update laporan menggunakan PATCH
     Route::patch(
         '/laporans/{laporan}',
         [LaporanController::class, 'update']
@@ -103,9 +160,9 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-    // =========================
+    // ==================================================
     // KATEGORI
-    // =========================
+    // ==================================================
 
     // Tambah kategori
     Route::post(
@@ -113,13 +170,13 @@ Route::middleware('auth:sanctum')->group(function () {
         [KategoriController::class, 'store']
     );
 
-    // Update kategori
+    // Update kategori menggunakan PUT
     Route::put(
         '/kategoris/{kategori}',
         [KategoriController::class, 'update']
     );
 
-    // Update kategori PATCH
+    // Update kategori menggunakan PATCH
     Route::patch(
         '/kategoris/{kategori}',
         [KategoriController::class, 'update']
@@ -132,9 +189,9 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-    // =========================
+    // ==================================================
     // TANGGAPAN / KOMENTAR
-    // =========================
+    // ==================================================
 
     // Membuat komentar
     Route::post(
@@ -143,9 +200,9 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-    // =========================
+    // ==================================================
     // LIKE / DISLIKE KOMENTAR
-    // =========================
+    // ==================================================
 
     Route::post(
         '/tanggapans/{tanggapan}/reaction',
@@ -153,9 +210,38 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-    // =========================
+    // ==================================================
+    // FEEDBACK
+    // ==================================================
+
+    // Semua feedback untuk admin
+    Route::get(
+        '/feedbacks',
+        [FeedbackController::class, 'index']
+    );
+
+    // Mengirim feedback
+    Route::post(
+        '/feedbacks',
+        [FeedbackController::class, 'store']
+    );
+
+    // Update feedback
+    Route::put(
+        '/feedbacks/{feedback}',
+        [FeedbackController::class, 'update']
+    );
+
+    // Hapus feedback
+    Route::delete(
+        '/feedbacks/{feedback}',
+        [FeedbackController::class, 'destroy']
+    );
+
+
+    // ==================================================
     // NOTIFIKASI
-    // =========================
+    // ==================================================
 
     // Daftar notifikasi
     Route::get(
@@ -176,22 +262,26 @@ Route::middleware('auth:sanctum')->group(function () {
     );
 
 
-    // =========================
+    // ==================================================
     // KELOLA PENGGUNA
-    // =========================
+    // ==================================================
 
+    // Semua pengguna
     Route::get(
         '/users',
         [UserController::class, 'index']
     );
 
+    // Aktif / nonaktifkan pengguna
     Route::put(
         '/users/{user}/toggle-status',
         [UserController::class, 'toggleStatus']
     );
 
+    // Hapus pengguna
     Route::delete(
         '/users/{user}',
         [UserController::class, 'destroy']
     );
+
 });

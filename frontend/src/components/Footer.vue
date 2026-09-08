@@ -182,7 +182,31 @@
 
         </div>
 
+        <!-- =========================
+             BANTUAN
+        ========================== -->
+        <div class="footer-col">
+          <h3>
+            Laporkan Masalah atau Beri Masukan
+          </h3>
 
+          <p>
+            Jika kamu menemukan bug, error, atau ingin memberikan saran
+            perbaikan, silakan gunakan tautan di bawah ini.
+          </p>
+
+          <ul class="footer-links">
+            <li>
+              <RouterLink
+                to="/feedback"
+                class="footer-report-link"
+              >
+                💬 Beri Masukan
+              </RouterLink>
+            </li>
+          </ul>
+        </div>
+          
         <!-- =========================
              KONTAK
         ========================== -->
@@ -380,5 +404,117 @@ const currentYear = computed(() => {
     flex-wrap: wrap;
   }
 
+}
+
+/* ================================
+   FOOTER COLUMN - LAPORAN & MASUKAN
+================================ */
+
+.footer-col {
+  flex: 1;
+  min-width: 250px;
+}
+
+.footer-col h3 {
+  margin: 0 0 14px;
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.footer-col p {
+  margin: 0 0 18px;
+  color: #b8c1d1;
+  font-size: 14px;
+  line-height: 1.7;
+  max-width: 360px;
+}
+
+/* ================================
+   FOOTER LINKS
+================================ */
+
+.footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.footer-links li {
+  margin: 0;
+  padding: 0;
+}
+
+/* ================================
+   LINK BERI MASUKAN
+================================ */
+
+.footer-report-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 16px;
+
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+
+  transition:
+    background 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Hover */
+
+.footer-report-link:hover {
+  color: #ffffff;
+
+  background: rgba(255, 255, 255, 0.15);
+
+  border-color: rgba(255, 255, 255, 0.25);
+
+  transform: translateY(-2px);
+
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+}
+
+/* Saat diklik */
+
+.footer-report-link:active {
+  transform: translateY(0);
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 768px) {
+  .footer-col {
+    min-width: 100%;
+  }
+
+  .footer-col h3 {
+    font-size: 17px;
+  }
+
+  .footer-col p {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .footer-report-link {
+    padding: 9px 14px;
+    font-size: 13px;
+  }
 }
 </style>
