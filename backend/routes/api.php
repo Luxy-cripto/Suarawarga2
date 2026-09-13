@@ -9,8 +9,15 @@ use App\Http\Controllers\NotifikasiController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\TanggapanReactionController;
 use App\Http\Controllers\FeedbackController;
+use App\Http\Controllers\SettingController;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+
+// ======================================================
+// SETTING
+// ======================================================
+Route::get('/settings', [SettingController::class, 'index']);
+Route::put('/settings', [SettingController::class, 'update']);
 
 // ======================================================
 // AUTH
