@@ -24,6 +24,8 @@ const notifOpen = ref(false)
 const notifikasis = ref([])
 const userVersion = ref(0)
 
+const siteName = ref('SUARAWARGA')
+
 const user = computed(() => {
   userVersion.value
   try {
@@ -74,6 +76,19 @@ function toggleNotif() {
 function toggleProfile() {
   profileMenuOpen.value = !profileMenuOpen.value
   notifOpen.value = false
+}
+
+
+async function fetchSiteName() {
+  try {
+    const res = await api.get('/settings')
+
+    siteName.value = res.data.site_name || 'SUARAWARGA'
+    document.title = siteName.value
+  } catch (err) {
+    console.error('Gagal mengambil nama situs:', err)
+    siteName.value = 'SUARAWARGA'
+  }
 }
 
 async function fetchNotifikasis() {
@@ -138,6 +153,7 @@ onMounted(() => {
   document.addEventListener('click', closeProfileMenu)
   window.addEventListener('user-updated', handleUserUpdated)
   fetchNotifikasis()
+  fetchSiteName()
 })
 
 onUnmounted(() => {
@@ -153,10 +169,10 @@ onUnmounted(() => {
     <aside class="admin-sidebar">
 
       <div class="admin-sidebar-header">
-        <RouterLink to="/" class="admin-logo">
-          <div class="admin-logo-icon">📢</div>
-          <span>SUARAWARGA</span>
-        </RouterLink>
+      <RouterLink to="/" class="admin-logo">
+        <div class="admin-logo-icon">📢</div>
+        <span>{{ siteName }}</span>
+      </RouterLink>
 
         <button class="sidebar-close" @click="sidebarOpen = false">✕</button>
       </div>
