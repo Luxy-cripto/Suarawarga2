@@ -30,6 +30,7 @@ import ProfilView from '../views/ProfilView.vue'
 import LaporanView from '../views/Laporan/LaporanView.vue'
 import BuatLaporanView from '../views/Laporan/BuatLaporanView.vue'
 import ReportDetail from '../views/Laporan/ReportDetail.vue'
+import FeedbackView from '../views/FeedbackView.vue'
 
 // =====================================================
 // ADMIN
@@ -42,6 +43,7 @@ import AdminUsers from '../views/admin/AdminUsersView.vue'
 import AdminSettings from '../views/admin/AdminSettingsView.vue'
 import AdminProfile from '../views/admin/AdminProfileView.vue'
 import AdminDetailLaporan from '../views/admin/DetailLaporan.vue'
+import AdminFeedbackView from '../views/admin/AdminFeedbackView.vue'
 
 
 // =====================================================
@@ -159,6 +161,17 @@ const routes = [
     }
   },
 
+  // =====================================================
+  // FEEDBACK
+  // =====================================================
+
+  {
+    path: '/feedback',
+    name: 'feedback',
+    component: FeedbackView,
+    meta: { requiresAuth: true },
+  },
+
 
   // ===================================================
   // ADMIN
@@ -232,6 +245,13 @@ const routes = [
       requiresAuth: true,
       requiresAdmin: true
     }
+  },
+
+  {
+    path: '/admin/feedback',
+    name: 'admin-feedback',
+    component: AdminFeedbackView,
+    meta: { requiresAuth: true, requiresAdmin: true },
   },
 
 

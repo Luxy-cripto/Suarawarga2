@@ -24,6 +24,8 @@ const notifOpen = ref(false)
 const notifikasis = ref([])
 const userVersion = ref(0)
 
+const siteName = ref('SUARAWARGA')
+
 const user = computed(() => {
   userVersion.value
   try {
@@ -38,6 +40,7 @@ const menuItems = [
   { key: 'reports', label: 'Laporan', icon: '📋', to: '/admin/laporan' },
   { key: 'users', label: 'Pengguna', icon: '👥', to: '/admin/users' },
   { key: 'categories', label: 'Kategori', icon: '🏷️', to: '/admin/kategori' },
+  { key: 'feedback', label: 'Masukan & Bug', icon: '💬', to: '/admin/feedback' },
   { key: 'settings', label: 'Pengaturan', icon: '⚙️', to: '/admin/settings' },
 ]
 
@@ -46,6 +49,7 @@ const activeKey = computed(() => {
   if (route.path.startsWith('/admin/laporan')) return 'reports'
   if (route.path.startsWith('/admin/users')) return 'users'
   if (route.path.startsWith('/admin/kategori')) return 'categories'
+  if (route.path.startsWith('/admin/feedback')) return 'feedback'
   if (route.path.startsWith('/admin/settings')) return 'settings'
   return null
 })
@@ -72,6 +76,19 @@ function toggleNotif() {
 function toggleProfile() {
   profileMenuOpen.value = !profileMenuOpen.value
   notifOpen.value = false
+}
+
+
+async function fetchSiteName() {
+  try {
+    const res = await api.get('/settings')
+
+    siteName.value = res.data.site_name || 'SUARAWARGA'
+    document.title = siteName.value
+  } catch (err) {
+    console.error('Gagal mengambil nama situs:', err)
+    siteName.value = 'SUARAWARGA'
+  }
 }
 
 async function fetchNotifikasis() {
@@ -136,6 +153,7 @@ onMounted(() => {
   document.addEventListener('click', closeProfileMenu)
   window.addEventListener('user-updated', handleUserUpdated)
   fetchNotifikasis()
+  fetchSiteName()
 })
 
 onUnmounted(() => {
@@ -151,10 +169,10 @@ onUnmounted(() => {
     <aside class="admin-sidebar">
 
       <div class="admin-sidebar-header">
-        <RouterLink to="/" class="admin-logo">
-          <div class="admin-logo-icon">📢</div>
-          <span>SUARAWARGA</span>
-        </RouterLink>
+      <RouterLink to="/" class="admin-logo">
+        <div class="admin-logo-icon">📢</div>
+        <span>{{ siteName }}</span>
+      </RouterLink>
 
         <button class="sidebar-close" @click="sidebarOpen = false">✕</button>
       </div>
