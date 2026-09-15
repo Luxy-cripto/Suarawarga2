@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="auth-page">
 
@@ -467,6 +466,7 @@ async function handleRegister() {
   try {
 
     // Data yang dikirim ke Laravel
+    // NOTE: jangan console.log objek ini — mengandung password plaintext
     const registerData = {
       name: name.value.trim(),
       email: email.value.trim(),
@@ -476,12 +476,6 @@ async function handleRegister() {
     }
 
 
-    console.log(
-      'REGISTER DATA:',
-      registerData
-    )
-
-
     // ==============================
     // REQUEST KE LARAVEL
     // ==============================
@@ -489,12 +483,6 @@ async function handleRegister() {
     const response = await api.post(
       '/register',
       registerData
-    )
-
-
-    console.log(
-      'REGISTER RESPONSE:',
-      response.data
     )
 
 
@@ -519,6 +507,8 @@ async function handleRegister() {
     // ==============================
     // SIMPAN TOKEN
     // ==============================
+    // NOTE: localStorage rentan terhadap XSS. Untuk keamanan lebih baik,
+    // pertimbangkan httpOnly cookie yang di-set dari backend Laravel.
 
     localStorage.setItem(
       'token',
@@ -542,43 +532,17 @@ async function handleRegister() {
     }
 
 
-    // ==============================
-    // BERHASIL
-    // ==============================
-
-    console.log(
-      'REGISTER BERHASIL'
-    )
-
-
     // Redirect ke Home
     await router.push('/')
 
 
   } catch (err) {
 
-    console.error(
-      'REGISTER ERROR:',
-      err
-    )
-
-
     // ==============================
     // ERROR DARI SERVER
     // ==============================
 
     if (err.response) {
-
-      console.error(
-        'STATUS:',
-        err.response.status
-      )
-
-      console.error(
-        'DATA:',
-        err.response.data
-      )
-
 
       // ==============================
       // VALIDATION ERROR 422
@@ -676,6 +640,9 @@ async function handleRegister() {
 
     }
 
+    // Kalau butuh debugging, log tanpa data sensitif:
+    // console.error('REGISTER ERROR:', err.response?.status || err.message)
+
   } finally {
 
     isLoading.value = false
@@ -691,8 +658,12 @@ async function handleRegister() {
 
 function registerGoogle() {
 
-  window.location.href =
-    'http://127.0.0.1:8000/auth/google'
+  // Ambil base URL dari environment variable, bukan hardcode.
+  // Tambahkan VITE_API_URL=http://127.0.0.1:8000 di file .env untuk development,
+  // dan ganti dengan URL production saat deploy.
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+
+  window.location.href = `${apiBaseUrl}/auth/google`
 
 }
 
@@ -719,4 +690,3 @@ function registerGoogle() {
 }
 
 </style>
-```
