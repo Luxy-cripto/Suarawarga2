@@ -1,4 +1,3 @@
-```vue
 <template>
   <div class="auth-page">
 
@@ -178,18 +177,12 @@ async function handleLogin() {
 
   try {
 
-    console.log('LOGIN DATA:', {
-      email: email.value,
-      password: password.value
-    })
-
     // Request ke Laravel
+    // NOTE: jangan console.log payload ini — mengandung password plaintext
     const response = await api.post('/login', {
       email: email.value,
       password: password.value
     })
-
-    console.log('LOGIN RESPONSE:', response.data)
 
     // ==============================
     // AMBIL TOKEN
@@ -204,6 +197,8 @@ async function handleLogin() {
     }
 
     // Simpan token
+    // NOTE: localStorage rentan terhadap XSS. Untuk keamanan lebih baik,
+    // pertimbangkan httpOnly cookie yang di-set dari backend Laravel.
     localStorage.setItem('token', token)
 
 
@@ -225,17 +220,11 @@ async function handleLogin() {
 
     const user = response.data.user
 
-    console.log('USER LOGIN:', user)
-
     if (user?.role === 'admin') {
-
-      console.log('Redirect ke admin')
 
       await router.push('/admin')
 
     } else {
-
-      console.log('Redirect ke home')
 
       await router.push('/')
 
@@ -243,23 +232,11 @@ async function handleLogin() {
 
   } catch (err) {
 
-    console.error('LOGIN ERROR:', err)
-
     // ==============================
     // ERROR DARI LARAVEL
     // ==============================
 
     if (err.response) {
-
-      console.error(
-        'STATUS:',
-        err.response.status
-      )
-
-      console.error(
-        'DATA:',
-        err.response.data
-      )
 
       // Laravel validation error
       if (err.response.status === 422) {
@@ -330,6 +307,9 @@ async function handleLogin() {
 
     }
 
+    // Kalau butuh debugging, log tanpa data sensitif:
+    // console.error('LOGIN ERROR:', err.response?.status || err.message)
+
   } finally {
 
     isLoading.value = false
@@ -344,10 +324,12 @@ async function handleLogin() {
 
 function loginGoogle() {
 
-  // Kalau Laravel menyediakan endpoint Google OAuth
-  window.location.href =
-    'http://127.0.0.1:8000/auth/google'
+  // Ambil base URL dari environment variable, bukan hardcode.
+  // Tambahkan VITE_API_URL=http://127.0.0.1:8000 di file .env untuk development,
+  // dan ganti dengan URL production saat deploy.
+  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+
+  window.location.href = `${apiBaseUrl}/auth/google`
 
 }
 </script>
-```

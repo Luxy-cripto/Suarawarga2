@@ -43,6 +43,7 @@
                 class="form-control has-icon"
                 placeholder="Minimal 6 karakter"
                 required
+                minlength="6"
               />
               <button type="button" class="password-toggle" @click="showPassword = !showPassword">
                 {{ showPassword ? '🙈' : '👁️' }}
@@ -57,12 +58,21 @@
               <input
                 id="password_confirmation"
                 v-model="passwordConfirmation"
-                type="password"
+                :type="showPassword ? 'text' : 'password'"
                 class="form-control has-icon"
                 placeholder="Ulangi kata sandi baru"
                 required
+                minlength="6"
               />
             </div>
+          </div>
+
+          <!-- Peringatan kalau konfirmasi tidak sama -->
+          <div
+            v-if="passwordConfirmation && password !== passwordConfirmation"
+            class="password-warning"
+          >
+            ⚠️ Konfirmasi kata sandi tidak sama.
           </div>
 
           <button type="submit" class="btn btn-primary auth-submit" :disabled="isLoading">
@@ -90,28 +100,73 @@ const passwordConfirmation = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
+const showPassword = ref(false)
 
 onMounted(() => {
+  // NOTE: email & token datang dari link di email (route query).
+  // Ini bawaan flow reset password, tapi pastikan di sisi Laravel
+  // token dibuat single-use dan kedaluwarsa cepat (misal 30-60 menit),
+  // karena token ini terekspos di URL (bisa tersimpan di history browser).
   email.value = route.query.email || ''
   token.value = route.query.token || ''
 })
 
 async function handleSubmit() {
-  isLoading.value = true
   errorMessage.value = ''
 
+  // ==============================
+  // VALIDASI PASSWORD
+  // ==============================
+
+  if (password.value.length < 6) {
+    errorMessage.value = 'Kata sandi minimal 6 karakter.'
+    return
+  }
+
+  if (password.value !== passwordConfirmation.value) {
+    errorMessage.value = 'Konfirmasi kata sandi tidak sama.'
+    return
+  }
+
+  isLoading.value = true
+
   try {
+    // NOTE: jangan console.log payload ini — mengandung password plaintext
     const res = await api.post('/reset-password', {
       email: email.value,
       token: token.value,
       password: password.value,
       password_confirmation: passwordConfirmation.value,
     })
+
     successMessage.value = res.data.message
+
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal reset password. Link mungkin sudah kedaluwarsa.'
+
+    errorMessage.value =
+      err.response?.data?.message ||
+      'Gagal reset password. Link mungkin sudah kedaluwarsa.'
+
+    // Kalau butuh debugging, log tanpa data sensitif:
+    // console.error('RESET PASSWORD ERROR:', err.response?.status)
+
   } finally {
+
     isLoading.value = false
+
   }
 }
 </script>
+
+<style scoped>
+.password-warning {
+  margin-top: -10px;
+  margin-bottom: 15px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffe69c;
+}
+</style>

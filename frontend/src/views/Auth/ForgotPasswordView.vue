@@ -72,17 +72,56 @@ const isLoading = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
+// Pesan generik ini SENGAJA dipakai untuk kondisi sukses maupun email
+// tidak ditemukan (asal request valid), supaya form ini tidak bisa
+// dipakai untuk mengecek email mana saja yang terdaftar di sistem
+// (email enumeration). Idealnya endpoint Laravel /forgot-password juga
+// dibuat untuk selalu balas 200 + pesan yang sama, terlepas email
+// ditemukan atau tidak.
+const GENERIC_SUCCESS_MESSAGE =
+  'Kalau email tersebut terdaftar, kami sudah kirim link reset password. Silakan cek inbox (dan folder spam) kamu.'
+
 async function handleSubmit() {
   isLoading.value = true
   errorMessage.value = ''
 
   try {
-    const res = await api.post('/forgot-password', { email: email.value })
-    successMessage.value = res.data.message
+    await api.post('/forgot-password', { email: email.value })
+
+    // Jangan pakai res.data.message dari server secara langsung —
+    // pakai pesan generik supaya tidak membocorkan status email.
+    successMessage.value = GENERIC_SUCCESS_MESSAGE
+
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || 'Gagal mengirim link reset. Coba lagi.'
+
+    // Hanya tampilkan pesan error untuk masalah teknis (validasi format,
+    // rate limit, server down) — BUKAN untuk "email tidak ditemukan".
+    // Kalau backend Laravel mengirim 422 hanya karena format email salah,
+    // pesan itu aman ditampilkan. Tapi kalau backend mengirim error
+    // khusus "email tidak terdaftar", sebaiknya diseragamkan jadi
+    // pesan sukses generik di atas juga (perbaikan di sisi backend).
+    if (err.response?.status === 422) {
+
+      errorMessage.value =
+        err.response.data.message ||
+        'Format email tidak valid.'
+
+    } else if (err.request) {
+
+      errorMessage.value =
+        'Tidak dapat terhubung ke server. Coba lagi nanti.'
+
+    } else {
+
+      errorMessage.value =
+        'Gagal mengirim link reset. Coba lagi.'
+
+    }
+
   } finally {
+
     isLoading.value = false
+
   }
 }
 </script>
