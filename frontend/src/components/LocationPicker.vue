@@ -12,7 +12,6 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 
-// Perbaikan icon default Leaflet yang sering rusak di build Vite
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
 import markerShadow from 'leaflet/dist/images/marker-shadow.png'
@@ -39,9 +38,7 @@ let marker = null
 
 async function reverseGeocode(lat, lng) {
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-    )
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
     const data = await res.json()
     return data.display_name || ''
   } catch (err) {
@@ -70,8 +67,15 @@ async function handleMapClick(e) {
   })
 }
 
+function flyToLocation(lat, lng, zoom = 16) {
+  if (!map) return
+  map.setView([lat, lng], zoom)
+  placeMarker(lat, lng)
+}
+
+defineExpose({ flyToLocation })
+
 onMounted(() => {
-  // Default posisi: Bandung (bisa disesuaikan area kamu)
   const defaultLat = props.modelValue.latitude || -6.9175
   const defaultLng = props.modelValue.longitude || 107.6191
 
@@ -87,7 +91,6 @@ onMounted(() => {
 
   map.on('click', handleMapClick)
 
-  // Coba pakai lokasi GPS user kalau diizinkan
   if (!props.modelValue.latitude && navigator.geolocation) {
     navigator.geolocation.getCurrentPosition((pos) => {
       const { latitude, longitude } = pos.coords

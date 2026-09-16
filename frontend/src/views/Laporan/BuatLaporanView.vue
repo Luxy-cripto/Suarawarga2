@@ -15,6 +15,7 @@ const errorMessage = ref('')
 const successMessage = ref('')
 const categories = ref([])
 const fotoPreview = ref('')
+const locationPickerRef = ref(null)
 
 const form = ref({
   judul: '',
@@ -124,12 +125,17 @@ function getLocation() {
 
   navigator.geolocation.getCurrentPosition(
     (position) => {
-      form.value.latitude = position.coords.latitude
-      form.value.longitude = position.coords.longitude
+      const lat = position.coords.latitude
+      const lng = position.coords.longitude
+
+      form.value.latitude = lat
+      form.value.longitude = lng
 
       if (!form.value.lokasi) {
-        form.value.lokasi = `Lokasi GPS: ${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)}`
+        form.value.lokasi = `Lokasi GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}`
       }
+
+      locationPickerRef.value?.flyToLocation(lat, lng)
 
       gettingLocation.value = false
     },
@@ -297,16 +303,15 @@ onMounted(() => {
             <small class="help-text">✍️ Jelaskan lokasi, kondisi masalah, dan informasi lain yang menurut kamu penting.</small>
           </div>
 
-          <!-- LOKASI: PETA -->
           <div class="form-group">
             <label>Tandai Lokasi di Peta</label>
             <LocationPicker
+              ref="locationPickerRef"
               :model-value="{ latitude: form.latitude, longitude: form.longitude, lokasi: form.lokasi }"
               @update:model-value="handleLocationPick"
             />
           </div>
 
-          <!-- LOKASI: MANUAL / GPS -->
           <div class="form-group">
             <label for="lokasi">Alamat Lokasi Kejadian</label>
             <div class="location-input">

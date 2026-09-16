@@ -35,7 +35,18 @@ async function fetchDetail() {
 
   try {
     const response = await api.get(`/laporans/${route.params.id}`)
-    laporan.value = response.data
+    // Backend membungkus resource tunggal dalam { data: {...} }.
+    // Sebelumnya kode ini langsung pakai response.data (objek wrapper-nya),
+    // jadi laporan.value.judul / .status / .foto semuanya undefined.
+    const data = response.data?.data ?? response.data
+
+    if (!data || !data.id) {
+      error.value = 'Laporan tidak ditemukan.'
+      laporan.value = null
+      return
+    }
+
+    laporan.value = data
   } catch (err) {
     console.error('ERROR DETAIL:', err)
     error.value =
@@ -61,7 +72,7 @@ async function updateStatus(event) {
       status: newStatus
     })
 
-    laporan.value = response.data.data || response.data
+    laporan.value = response.data?.data ?? response.data
   } catch (err) {
     console.error('ERROR UPDATE STATUS:', err)
     laporan.value.status = oldStatus
@@ -105,12 +116,25 @@ function kembali() {
   router.push('/admin/reports')
 }
 
-function categoryEmoji(kategori) {
-  return categoryMap[kategori]?.emoji || '📋'
+// Kategori bisa datang sebagai string slug ("kategori") ATAU sebagai
+// relasi objek ("kategori_relasi": { nama, icon }), tergantung endpoint.
+// Fungsi di bawah menangani keduanya supaya tidak blank kalau salah satu tidak ada.
+function getKategoriSlugOrNama(laporanData) {
+  if (!laporanData) return ''
+  return laporanData.kategori_relasi?.nama || laporanData.kategori || ''
 }
 
-function categoryLabel(kategori) {
-  return categoryMap[kategori]?.label || kategori || 'Lainnya'
+function categoryEmoji(laporanData) {
+  if (!laporanData) return '📋'
+  if (laporanData.kategori_relasi?.icon) return laporanData.kategori_relasi.icon
+  const slug = laporanData.kategori
+  return categoryMap[slug]?.emoji || '📋'
+}
+
+function categoryLabel(laporanData) {
+  if (!laporanData) return 'Lainnya'
+  const nama = getKategoriSlugOrNama(laporanData)
+  return categoryMap[laporanData.kategori]?.label || nama || 'Lainnya'
 }
 
 function statusClass(status) {
@@ -150,17 +174,51 @@ function formatDateTime(date) {
   })
 }
 
-function getFotoUrl(foto) {
-  if (!foto) return ''
+// Nama field foto dari backend kadang "foto", kadang "foto_url" —
+// fungsi ini menerima laporan-nya langsung supaya bisa cek keduanya.
+function resolveFotoValue(laporanData) {
+  return laporanData?.foto_url || laporanData?.foto || ''
+}
+
+function getFotoUrl(fotoValue) {
+  if (!fotoValue) return ''
 
   if (
-    foto.startsWith('http://') ||
-    foto.startsWith('https://')
+    fotoValue.startsWith('http://') ||
+    fotoValue.startsWith('https://')
   ) {
-    return foto
+    return fotoValue
   }
 
-  return `http://127.0.0.1:8000/storage/${foto}`
+  if (fotoValue.startsWith('/storage/')) {
+    return `http://127.0.0.1:8000${fotoValue}`
+  }
+
+  if (fotoValue.startsWith('storage/')) {
+    return `http://127.0.0.1:8000/${fotoValue}`
+  }
+
+  return `http://127.0.0.1:8000/storage/${fotoValue}`
+}
+
+// Cek koordinat dengan aman (0 dianggap valid, bukan falsy check biasa)
+function hasCoordinates(laporanData) {
+  const lat = laporanData?.latitude
+  const lng = laporanData?.longitude
+  return lat !== null && lat !== undefined && lat !== '' &&
+         lng !== null && lng !== undefined && lng !== '' &&
+         !Number.isNaN(parseFloat(lat)) && !Number.isNaN(parseFloat(lng))
+}
+
+// Embed Google Maps tanpa API key (pakai endpoint output=embed).
+// Kalau proyekmu sudah punya Google Maps API key, ganti dengan:
+// `https://www.google.com/maps/embed/v1/place?key=API_KEY&q=${lat},${lng}`
+function mapEmbedUrl(lat, lng) {
+  return `https://www.google.com/maps?q=${lat},${lng}&z=16&output=embed`
+}
+
+function mapLinkUrl(lat, lng) {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
 }
 
 onMounted(fetchDetail)
@@ -196,21 +254,22 @@ onMounted(fetchDetail)
       <div class="card report-detail-card">
         <div class="report-detail-image">
           <img
-            v-if="laporan.foto"
-            :src="getFotoUrl(laporan.foto)"
+            v-if="resolveFotoValue(laporan)"
+            :src="getFotoUrl(resolveFotoValue(laporan))"
             :alt="laporan.judul"
+            @error="$event.target.style.display = 'none'"
           />
 
           <div v-else class="report-no-image">
-            <div>{{ categoryEmoji(laporan.kategori) }}</div>
+            <div>{{ categoryEmoji(laporan) }}</div>
             <span>Tidak ada foto laporan</span>
           </div>
         </div>
 
         <div class="report-detail-content">
           <div class="detail-category">
-            {{ categoryEmoji(laporan.kategori) }}
-            {{ categoryLabel(laporan.kategori) }}
+            {{ categoryEmoji(laporan) }}
+            {{ categoryLabel(laporan) }}
           </div>
 
           <h2 class="detail-title">
@@ -239,6 +298,33 @@ onMounted(fetchDetail)
               <span>
                 {{ laporan.lokasi || 'Lokasi tidak tersedia' }}
               </span>
+            </div>
+
+            <div v-if="hasCoordinates(laporan)" class="location-map-wrapper">
+              <iframe
+                class="location-map-frame"
+                :src="mapEmbedUrl(laporan.latitude, laporan.longitude)"
+                width="100%"
+                height="260"
+                style="border: 0"
+                allowfullscreen
+                loading="lazy"
+                referrerpolicy="no-referrer-when-downgrade"
+                title="Lokasi laporan di Google Maps"
+              ></iframe>
+
+              <a
+                :href="mapLinkUrl(laporan.latitude, laporan.longitude)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="location-map-link"
+              >
+                🔗 Buka di Google Maps
+              </a>
+            </div>
+
+            <div v-else class="location-map-placeholder">
+              Koordinat GPS tidak tersedia untuk laporan ini.
             </div>
           </div>
         </div>
@@ -278,13 +364,13 @@ onMounted(fetchDetail)
 
           <div class="detail-info-item">
             <span class="detail-info-icon">
-              {{ categoryEmoji(laporan.kategori) }}
+              {{ categoryEmoji(laporan) }}
             </span>
 
             <div>
               <span class="detail-info-label">Kategori</span>
               <strong>
-                {{ categoryLabel(laporan.kategori) }}
+                {{ categoryLabel(laporan) }}
               </strong>
             </div>
           </div>
@@ -350,3 +436,34 @@ onMounted(fetchDetail)
     </div>
   </AdminLayout>
 </template>
+
+<style scoped>
+.location-map-wrapper {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e2e8f0);
+}
+.location-map-frame { display: block; }
+.location-map-link {
+  display: block;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--primary, #0d9d98);
+  background: var(--surface-soft, #f1f5f9);
+  text-decoration: none;
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+.location-map-link:hover { text-decoration: underline; }
+.location-map-placeholder {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px dashed var(--border, #e2e8f0);
+  background: var(--surface-soft, #f1f5f9);
+  color: var(--text-secondary, #64748b);
+  font-size: 13.5px;
+  text-align: center;
+}
+</style>  
