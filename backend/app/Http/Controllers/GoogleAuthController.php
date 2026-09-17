@@ -29,14 +29,31 @@ class GoogleAuthController extends Controller
             ->first();
 
         if ($user) {
+
+            $updates = [];
+
             if (!$user->google_id) {
-                $user->update(['google_id' => $googleUser->id]);
+                $updates['google_id'] = $googleUser->id;
             }
+
+            // Hanya isi foto dari Google kalau user belum punya foto
+            // sama sekali (misal belum pernah upload foto manual).
+            // Ini supaya foto yang sudah di-upload manual tidak ketimpa
+            // setiap kali login pakai Google.
+            if (empty($user->foto) && $googleUser->avatar) {
+                $updates['foto'] = $googleUser->avatar;
+            }
+
+            if (!empty($updates)) {
+                $user->update($updates);
+            }
+
         } else {
             $user = User::create([
                 'name' => $googleUser->name,
                 'email' => $googleUser->email,
                 'google_id' => $googleUser->id,
+                'foto' => $googleUser->avatar,
                 'password' => Hash::make(Str::random(24)),
                 'role' => 'warga',
             ]);
