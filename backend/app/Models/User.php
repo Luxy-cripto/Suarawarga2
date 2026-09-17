@@ -22,7 +22,19 @@ class User extends Authenticatable
 
     public function getFotoUrlAttribute()
     {
-        return $this->foto ? asset('storage/' . $this->foto) : null;
+        if (!$this->foto) {
+            return null;
+        }
+
+        // Kalau foto sudah berupa URL lengkap (misal dari Google:
+        // https://lh3.googleusercontent.com/...), pakai langsung.
+        // Kalau bukan (path lokal hasil upload manual, misal
+        // "avatars/xyz.jpg"), gabung dengan storage URL seperti biasa.
+        if (str_starts_with($this->foto, 'http://') || str_starts_with($this->foto, 'https://')) {
+            return $this->foto;
+        }
+
+        return asset('storage/' . $this->foto);
     }
 
     protected function casts(): array
