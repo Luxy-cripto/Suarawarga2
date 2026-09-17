@@ -17,6 +17,7 @@ import LoginView from '../views/Auth/LoginView.vue'
 import RegisterView from '../views/Auth/RegisterView.vue'
 import ForgotPasswordView from '../views/Auth/ForgotPasswordView.vue'
 import ResetPasswordView from '../views/Auth/ResetPasswordView.vue'
+import GoogleCallbackView from '../views/Auth/GoogleCallbackView.vue'
 // =====================================================
 // USER
 // =====================================================
@@ -107,6 +108,12 @@ const routes = [
     path: '/reset-password',
     name: 'reset-password',
     component: ResetPasswordView,
+  },
+
+  {
+    path: '/login/google-callback',
+    name: 'google-callback',
+    component: GoogleCallbackView,
   },
 
 
