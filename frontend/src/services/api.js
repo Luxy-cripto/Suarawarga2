@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: 'http://10.10.9.22:8000/api',
+  baseURL: 'http://10.10.9.22.nip.io:8000/api',
 })
 
 api.interceptors.request.use((config) => {
