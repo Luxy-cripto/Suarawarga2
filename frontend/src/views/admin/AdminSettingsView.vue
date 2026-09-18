@@ -42,7 +42,7 @@ async function fetchProfile() {
   try {
     const res = await api.get('/profile')
     profile.value = { name: res.data.name, email: res.data.email }
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
   } catch (err) {
     // ignore
   }
@@ -54,7 +54,7 @@ async function saveProfile() {
   profileError.value = ''
   try {
     const res = await api.post('/profile', profile.value)
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
     window.dispatchEvent(new Event('user-updated'))
     profileSaved.value = true
     setTimeout(() => (profileSaved.value = false), 2500)
@@ -93,7 +93,7 @@ async function saveSite() {
 }
 
 function loadNotifPrefs() {
-  const saved = localStorage.getItem('admin_notif_prefs')
+  const saved = sessionStorage.getItem('admin_notif_prefs')
   if (saved) {
     try {
       notifications.value = JSON.parse(saved)
@@ -104,7 +104,7 @@ function loadNotifPrefs() {
 }
 
 function saveNotifPrefs() {
-  localStorage.setItem('admin_notif_prefs', JSON.stringify(notifications.value))
+  sessionStorage.setItem('admin_notif_prefs', JSON.stringify(notifications.value))
 }
 
 async function changePassword() {

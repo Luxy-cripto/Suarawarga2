@@ -28,7 +28,7 @@ const form = ref({
 })
 
 function checkLogin() {
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
   if (!token) {
     router.push({ name: 'login', query: { redirect: '/laporan/buat' } })
     return false
@@ -65,8 +65,8 @@ async function fetchKategori() {
     categories.value = Array.isArray(data) ? data : []
   } catch (error) {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       router.push({ name: 'login', query: { redirect: '/laporan/buat' } })
       return
     }
@@ -213,8 +213,8 @@ async function submitLaporan() {
     }, 900)
   } catch (error) {
     if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       router.push({ name: 'login', query: { redirect: '/laporan/buat' } })
       return
     }

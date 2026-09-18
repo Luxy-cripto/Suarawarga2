@@ -29,7 +29,7 @@ const siteName = ref('SUARAWARGA')
 const user = computed(() => {
   userVersion.value
   try {
-    return JSON.parse(localStorage.getItem('user') || 'null')
+    return JSON.parse(sessionStorage.getItem('user') || 'null')
   } catch {
     return null
   }
@@ -139,8 +139,8 @@ async function handleLogout() {
     console.log('Logout API:', err)
   }
 
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem('user')
 
   router.push('/login')
 }

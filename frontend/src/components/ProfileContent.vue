@@ -125,7 +125,7 @@
 import { ref, onMounted } from 'vue'
 import api from '@/services/api'
 
-const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+const user = ref(JSON.parse(sessionStorage.getItem('user') || 'null'))
 const editing = ref(false)
 const saving = ref(false)
 const error = ref('')
@@ -154,7 +154,7 @@ async function fetchProfile() {
   try {
     const res = await api.get('/profile')
     user.value = res.data
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
   } catch (err) {
     // ignore
   }
@@ -201,7 +201,7 @@ async function handleSave() {
     const res = await api.post('/profile', data)
 
     user.value = res.data
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
     window.dispatchEvent(new Event('user-updated'))
     success.value = 'Profil berhasil diperbarui.'
     editing.value = false

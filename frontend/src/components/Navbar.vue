@@ -21,12 +21,12 @@ const siteTagline = ref('Suara masyarakat, perubahan nyata.')
 const user = computed(() => {
   userVersion.value
   try {
-    return JSON.parse(localStorage.getItem('user') || 'null')
+    return JSON.parse(sessionStorage.getItem('user') || 'null')
   } catch {
     return null
   }
 })
-const isLoggedIn = computed(() => !!localStorage.getItem('token'))
+const isLoggedIn = computed(() => !!sessionStorage.getItem('token'))
 const isAdmin = computed(() => user.value?.role === 'admin')
 
 // NOTIFICATION
@@ -130,8 +130,8 @@ async function handleLogout() {
   } catch (err) {
     console.error('Logout API:', err)
   }
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  sessionStorage.removeItem('token')
+  sessionStorage.removeItem('user')
   notifikasis.value = []
   mobileMenuOpen.value = false
   profileMenuOpen.value = false

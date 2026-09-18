@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Navbar from '../../components/Navbar.vue'
 import Footer from '../../components/Footer.vue'
@@ -29,9 +29,14 @@ const replyText = ref('')
 const mapContainer = ref(null)
 let map = null
 
+// Auto-refresh status laporan
+const STATUS_POLL_INTERVAL = 15000 // cek tiap 15 detik
+let statusPollTimer = null
+const statusJustUpdated = ref(false)
+
 const user = ref(null)
 try {
-  user.value = JSON.parse(localStorage.getItem('user') || 'null')
+  user.value = JSON.parse(sessionStorage.getItem('user') || 'null')
 } catch {
   user.value = null
 }
@@ -61,7 +66,7 @@ const statusData = computed(() => {
   return statusMap[status] || { label: status || 'Tidak diketahui', class: 'status-waiting', icon: '⚪' }
 })
 
-const isLoggedIn = computed(() => Boolean(localStorage.getItem('token')))
+const isLoggedIn = computed(() => Boolean(sessionStorage.getItem('token')))
 const totalKomentar = computed(() => tanggapans.value.length)
 
 const hasCoordinates = computed(() => {
@@ -75,7 +80,7 @@ const hasCoordinates = computed(() => {
 })
 
 function getTokenExists() {
-  return Boolean(localStorage.getItem('token'))
+  return Boolean(sessionStorage.getItem('token'))
 }
 
 function formatDate(date) {
@@ -172,11 +177,62 @@ async function fetchLaporan() {
 
     await nextTick()
     initMap()
+
+    // Mulai polling status setelah laporan pertama kali berhasil dimuat
+    startStatusPolling()
   } catch (err) {
     if (err.response?.status === 404) error.value = 'Laporan dengan ID tersebut tidak ditemukan.'
     else if (err.response?.status === 401) error.value = 'Kamu tidak memiliki akses ke laporan ini.'
     else error.value = err.response?.data?.message || 'Gagal mengambil detail laporan.'
     loading.value = false
+  }
+}
+
+// Ambil ulang data laporan dari server, lalu update HANYA field yang bisa
+// berubah dari sisi admin (status, dsb). Tidak menimpa seluruh objek `laporan`
+// supaya komentar yang sedang diketik, posisi peta, dsb tidak ikut ter-reset.
+async function refreshStatus() {
+  const id = route.params.id
+  if (!id) return
+
+  try {
+    const response = await api.get(`/laporans/${id}`)
+    const data = response.data?.data ?? response.data
+    if (!data || !laporan.value) return
+
+    const statusBerubah = data.status && data.status !== laporan.value.status
+
+    laporan.value.status = data.status ?? laporan.value.status
+
+    if (statusBerubah) {
+      statusJustUpdated.value = true
+      setTimeout(() => { statusJustUpdated.value = false }, 2500)
+    }
+  } catch (err) {
+    // Gagal polling tidak perlu mengganggu pengguna, cukup diabaikan
+    // dan dicoba lagi di interval berikutnya.
+  }
+}
+
+function startStatusPolling() {
+  stopStatusPolling()
+  statusPollTimer = setInterval(refreshStatus, STATUS_POLL_INTERVAL)
+}
+
+function stopStatusPolling() {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer)
+    statusPollTimer = null
+  }
+}
+
+// Hentikan polling saat tab disembunyikan (hemat request), lanjutkan lagi saat aktif
+function handleVisibilityChange() {
+  if (document.hidden) {
+    stopStatusPolling()
+  } else if (laporan.value) {
+    refreshStatus()
+    startStatusPolling()
   }
 }
 
@@ -232,8 +288,8 @@ async function kirimKomentar() {
   } catch (err) {
     if (err.response?.status === 401) {
       alert('Sesi login kamu sudah berakhir. Silakan login kembali.')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       user.value = null
       goLogin()
       return
@@ -295,8 +351,8 @@ async function kirimBalasan() {
   } catch (err) {
     if (err.response?.status === 401) {
       alert('Sesi login kamu sudah berakhir. Silakan login kembali.')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       user.value = null
       goLogin()
       return
@@ -327,8 +383,8 @@ async function reactKomentar(tanggapan, type) {
   } catch (err) {
     if (err.response?.status === 401) {
       alert('Sesi login kamu sudah berakhir. Silakan login kembali.')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      sessionStorage.removeItem('token')
+      sessionStorage.removeItem('user')
       user.value = null
       goLogin()
       return
@@ -339,7 +395,19 @@ async function reactKomentar(tanggapan, type) {
   }
 }
 
-onMounted(fetchLaporan)
+onMounted(() => {
+  fetchLaporan()
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onUnmounted(() => {
+  stopStatusPolling()
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+  if (map) {
+    map.remove()
+    map = null
+  }
+})
 </script>
 
 <template>
@@ -379,13 +447,13 @@ onMounted(fetchLaporan)
               <div v-if="getFotoUrl()" class="report-photo">
                 <img :src="getFotoUrl()" alt="Foto laporan" @error="$event.target.style.display = 'none'" />
                 <span class="report-category floating">{{ kategoriIcon }} {{ kategoriNama }}</span>
-                <span class="status floating" :class="statusData.class">{{ statusData.icon }} {{ statusData.label }}</span>
+                <span class="status floating" :class="[statusData.class, { 'status-pulse': statusJustUpdated }]">{{ statusData.icon }} {{ statusData.label }}</span>
               </div>
 
               <div class="report-content">
                 <div v-if="!getFotoUrl()" class="report-top">
                   <span class="report-category">{{ kategoriIcon }} {{ kategoriNama }}</span>
-                  <span class="status" :class="statusData.class">{{ statusData.icon }} {{ statusData.label }}</span>
+                  <span class="status" :class="[statusData.class, { 'status-pulse': statusJustUpdated }]">{{ statusData.icon }} {{ statusData.label }}</span>
                 </div>
 
                 <h1 class="report-title">{{ laporan.judul }}</h1>
@@ -524,7 +592,7 @@ onMounted(fetchLaporan)
                   <span class="info-icon">📌</span>
                   <div class="info-text">
                     <small>Status</small>
-                    <span class="status" :class="statusData.class">{{ statusData.icon }} {{ statusData.label }}</span>
+                    <span class="status" :class="[statusData.class, { 'status-pulse': statusJustUpdated }]">{{ statusData.icon }} {{ statusData.label }}</span>
                   </div>
                 </div>
                 <div class="info-row">
@@ -745,6 +813,13 @@ onMounted(fetchLaporan)
 .status-success { background: #dcfce7; color: #16803c; }
 .status-rejected { background: #fee2e2; color: #b42318; }
 
+.status-pulse { animation: status-pulse 0.6s ease 2; }
+
+@keyframes status-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(13, 157, 152, 0.4); }
+  50% { transform: scale(1.08); box-shadow: 0 0 0 6px rgba(13, 157, 152, 0); }
+}
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -752,6 +827,7 @@ onMounted(fetchLaporan)
 
 @media (prefers-reduced-motion: reduce) {
   .report-detail-card { animation: none; }
+  .status-pulse { animation: none; }
 }
 
 @media (max-width: 992px) {
