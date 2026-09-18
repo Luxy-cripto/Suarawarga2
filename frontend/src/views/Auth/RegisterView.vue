@@ -510,7 +510,7 @@ async function handleRegister() {
     // NOTE: localStorage rentan terhadap XSS. Untuk keamanan lebih baik,
     // pertimbangkan httpOnly cookie yang di-set dari backend Laravel.
 
-    localStorage.setItem(
+    sessionStorage.setItem(
       'token',
       token
     )
@@ -522,7 +522,7 @@ async function handleRegister() {
 
     if (response.data.user) {
 
-      localStorage.setItem(
+      sessionStorage.setItem(
         'user',
         JSON.stringify(
           response.data.user
@@ -661,7 +661,7 @@ function registerGoogle() {
   // Ambil base URL dari environment variable, bukan hardcode.
   // Tambahkan VITE_API_URL=http://127.0.0.1:8000 di file .env untuk development,
   // dan ganti dengan URL production saat deploy.
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+  const apiBaseUrl = import.meta.env.VITE_API_URL || '10.10.11.103.nip.io:8000'
 
   window.location.href = `${apiBaseUrl}/auth/google`
 

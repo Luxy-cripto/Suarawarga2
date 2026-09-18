@@ -60,9 +60,12 @@
                 Kata Sandi
               </label>
 
-            <RouterLink to="/forgot-password" class="auth-link-small">
-              Lupa kata sandi?
-            </RouterLink>
+              <RouterLink
+                to="/forgot-password"
+                class="auth-link-small"
+              >
+                Lupa kata sandi?
+              </RouterLink>
             </div>
 
             <div class="input-icon-field">
@@ -139,7 +142,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -159,7 +161,6 @@ const errorMessage = ref('')
 
 const showPassword = ref(false)
 
-
 // ==============================
 // LOGIN
 // ==============================
@@ -178,7 +179,6 @@ async function handleLogin() {
   try {
 
     // Request ke Laravel
-    // NOTE: jangan console.log payload ini — mengandung password plaintext
     const response = await api.post('/login', {
       email: email.value,
       password: password.value
@@ -196,23 +196,25 @@ async function handleLogin() {
       throw new Error('Token login tidak ditemukan dari server.')
     }
 
-    // Simpan token
-    // NOTE: localStorage rentan terhadap XSS. Untuk keamanan lebih baik,
-    // pertimbangkan httpOnly cookie yang di-set dari backend Laravel.
-    localStorage.setItem('token', token)
+    // ==============================
+    // SIMPAN TOKEN
+    // ==============================
+    // PENTING:
+    // Menggunakan sessionStorage agar setiap TAB
+    // mempunyai token login masing-masing.
 
+    sessionStorage.setItem('token', token)
 
     // ==============================
     // SIMPAN USER
     // ==============================
 
     if (response.data.user) {
-      localStorage.setItem(
+      sessionStorage.setItem(
         'user',
         JSON.stringify(response.data.user)
       )
     }
-
 
     // ==============================
     // CEK ROLE
@@ -307,9 +309,6 @@ async function handleLogin() {
 
     }
 
-    // Kalau butuh debugging, log tanpa data sensitif:
-    // console.error('LOGIN ERROR:', err.response?.status || err.message)
-
   } finally {
 
     isLoading.value = false
@@ -317,19 +316,19 @@ async function handleLogin() {
   }
 }
 
-
 // ==============================
 // GOOGLE LOGIN
 // ==============================
 
 function loginGoogle() {
 
-  // Ambil base URL dari environment variable, bukan hardcode.
-  // Tambahkan VITE_API_URL=http://127.0.0.1:8000 di file .env untuk development,
-  // dan ganti dengan URL production saat deploy.
-  const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+  const apiBaseUrl =
+    import.meta.env.VITE_API_URL ||
+    'http://127.0.0.1:8000'
 
-  window.location.href = `${apiBaseUrl}/auth/google`
+  window.location.href =
+    `${apiBaseUrl}/auth/google`
 
 }
 </script>
+

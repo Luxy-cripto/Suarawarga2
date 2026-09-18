@@ -30,7 +30,7 @@ const user = ref(null)
 function loadUser() {
   try {
     user.value = JSON.parse(
-      localStorage.getItem('user') || 'null'
+      sessionStorage.getItem('user') || 'null'
     )
   } catch {
     user.value = null

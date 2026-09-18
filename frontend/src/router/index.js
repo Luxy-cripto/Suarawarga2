@@ -306,7 +306,7 @@ const router = createRouter({
 
 router.beforeEach((to) => {
 
-  const token = localStorage.getItem('token')
+  const token = sessionStorage.getItem('token')
 
   const isAuthenticated = Boolean(token)
 
@@ -314,7 +314,7 @@ router.beforeEach((to) => {
 
   try {
     user = JSON.parse(
-      localStorage.getItem('user') || 'null'
+      sessionStorage.getItem('user') || 'null'
     )
   } catch {
     user = null

@@ -27,11 +27,11 @@ const loading = ref(true)
 const error = ref('')
 
 async function fetchUserAndRedirect(token) {
-  localStorage.setItem('token', token)
+  sessionStorage.setItem('token', token)
 
   try {
     const res = await api.get('/profile')
-    localStorage.setItem('user', JSON.stringify(res.data))
+    sessionStorage.setItem('user', JSON.stringify(res.data))
 
     if (res.data.role === 'admin') {
       router.push('/admin')
@@ -39,7 +39,8 @@ async function fetchUserAndRedirect(token) {
       router.push('/')
     }
   } catch (err) {
-    localStorage.removeItem('token')
+    sessionStorage.removeItem('token')
+    sessionStorage.removeItem('user')
     error.value = 'Gagal mengambil data akun. Silakan coba lagi.'
     loading.value = false
   }
