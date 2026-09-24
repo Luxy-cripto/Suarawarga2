@@ -1,8 +1,11 @@
 <?php
 
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ForgotPasswordController;
-use App\Http\Controllers\LaporanController;
+use App\Http\Controllers\Api\LaporanController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\TanggapanController;
 use App\Http\Controllers\NotifikasiController;
@@ -10,91 +13,144 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\TanggapanReactionController;
 use App\Http\Controllers\FeedbackController;
 use App\Http\Controllers\SettingController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes
+|--------------------------------------------------------------------------
+*/
 
 // ======================================================
 // SETTING
 // ======================================================
-Route::get('/settings', [SettingController::class, 'index']);
-Route::put('/settings', [SettingController::class, 'update']);
+
+Route::get('/settings', [
+    SettingController::class,
+    'index'
+]);
+
+Route::put('/settings', [
+    SettingController::class,
+    'update'
+]);
 
 // ======================================================
 // AUTH
 // ======================================================
 
-// Register
-Route::post('/register', [AuthController::class, 'register']);
+// Register & Login biasa
+Route::post('/register', [
+    AuthController::class,
+    'register'
+]);
 
-// Login
-Route::post('/login', [AuthController::class, 'login']);
-
-// Lupa password
-Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLink']);
-
-// Reset password
-Route::post('/reset-password', [ForgotPasswordController::class, 'reset']);
-
+Route::post('/login', [
+    AuthController::class,
+    'login'
+]);
 
 // ======================================================
-// PUBLIC
-// Tidak perlu login
+// GOOGLE LOGIN
 // ======================================================
 
-// ------------------------------------------------------
-// FEEDBACK PUBLIC / TESTIMONI
-// ------------------------------------------------------
+Route::get('/auth/google', [
+    AuthController::class,
+    'redirectToGoogle'
+]);
 
-Route::get(
-    '/feedbacks/public',
-    [FeedbackController::class, 'publicTestimonials']
-);
+Route::get('/auth/google/callback', [
+    AuthController::class,
+    'handleGoogleCallback'
+]);
 
+// ======================================================
+// FORGOT PASSWORD
+// ======================================================
 
-// ------------------------------------------------------
+Route::post('/forgot-password', [
+    ForgotPasswordController::class,
+    'sendResetLink'
+]);
+
+Route::post('/reset-password', [
+    ForgotPasswordController::class,
+    'reset'
+]);
+
+// ======================================================
+// PUBLIC ROUTES
+// Tidak membutuhkan login
+// ======================================================
+
+// Feedback / Testimoni
+Route::get('/feedbacks/public', [
+    FeedbackController::class,
+    'publicTestimonials'
+]);
+
+// ======================================================
 // LAPORAN PUBLIC
-// ------------------------------------------------------
+// ======================================================
 
-// Semua laporan
-Route::get(
-    '/laporans',
-    [LaporanController::class, 'index']
-);
+Route::get('/laporans', [
+    LaporanController::class,
+    'index'
+]);
 
-// Detail laporan
-Route::get(
-    '/laporans/{laporan}',
-    [LaporanController::class, 'show']
-);
+// ======================================================
+// EXPORT LAPORAN
+// ADMIN
+// ======================================================
 
+// HARUS sebelum /laporans/{laporan}
+Route::get('/laporans/export', [
+    LaporanController::class,
+    'export'
+])->middleware([
+    'auth:sanctum',
+    'role:admin'
+]);
 
-// ------------------------------------------------------
+// ======================================================
+// TUGAS PETUGAS
+// ======================================================
+
+// HARUS sebelum /laporans/{laporan}
+Route::get('/laporans/tugas-saya', [
+    LaporanController::class,
+    'tugasSaya'
+])->middleware([
+    'auth:sanctum',
+    'role:petugas'
+]);
+
+Route::get('/laporans/{laporan}', [
+    LaporanController::class,
+    'show'
+]);
+
+// ======================================================
 // KATEGORI PUBLIC
-// ------------------------------------------------------
+// ======================================================
 
-// Semua kategori
-Route::get(
-    '/kategoris',
-    [KategoriController::class, 'index']
-);
+Route::get('/kategoris', [
+    KategoriController::class,
+    'index'
+]);
 
-// Detail kategori
-Route::get(
-    '/kategoris/{kategori}',
-    [KategoriController::class, 'show']
-);
+Route::get('/kategoris/{kategori}', [
+    KategoriController::class,
+    'show'
+]);
 
-
-// ------------------------------------------------------
+// ======================================================
 // TANGGAPAN / KOMENTAR PUBLIC
-// ------------------------------------------------------
+// ======================================================
 
-// Semua komentar pada laporan
-Route::get(
-    '/laporans/{laporan}/tanggapans',
-    [TanggapanController::class, 'index']
-);
-
+Route::get('/laporans/{laporan}/tanggapans', [
+    TanggapanController::class,
+    'index'
+]);
 
 // ======================================================
 // ROUTE YANG MEMBUTUHKAN LOGIN
@@ -106,189 +162,193 @@ Route::middleware('auth:sanctum')->group(function () {
     // USER LOGIN
     // ==================================================
 
-    // Data user yang sedang login
     Route::get('/user', function (Request $request) {
         return response()->json(
             $request->user()
         );
     });
 
-
-    // Logout
-    Route::post(
-        '/logout',
-        [AuthController::class, 'logout']
-    );
-
+    Route::post('/logout', [
+        AuthController::class,
+        'logout'
+    ]);
 
     // ==================================================
     // PROFIL
     // ==================================================
 
-    // Lihat profil
-    Route::get(
-        '/profile',
-        [AuthController::class, 'profile']
-    );
+    Route::get('/profile', [
+        AuthController::class,
+        'profile'
+    ]);
 
-    // Update profil
-    Route::post(
-        '/profile',
-        [AuthController::class, 'updateProfile']
-    );
-
+    Route::post('/profile', [
+        AuthController::class,
+        'updateProfile'
+    ]);
 
     // ==================================================
     // LAPORAN
     // ==================================================
 
-    // Membuat laporan
-    Route::post(
-        '/laporans',
-        [LaporanController::class, 'store']
-    );
+    Route::post('/laporans', [
+        LaporanController::class,
+        'store'
+    ]);
 
-    // Update laporan menggunakan PUT
-    Route::put(
-        '/laporans/{laporan}',
-        [LaporanController::class, 'update']
-    );
+    Route::put('/laporans/{laporan}', [
+        LaporanController::class,
+        'update'
+    ]);
 
-    // Update laporan menggunakan PATCH
-    Route::patch(
-        '/laporans/{laporan}',
-        [LaporanController::class, 'update']
-    );
+    Route::patch('/laporans/{laporan}', [
+        LaporanController::class,
+        'update'
+    ]);
 
-    // Hapus laporan
-    Route::delete(
-        '/laporans/{laporan}',
-        [LaporanController::class, 'destroy']
-    );
+    Route::delete('/laporans/{laporan}', [
+        LaporanController::class,
+        'destroy'
+    ]);
 
+    Route::delete('/laporans/{laporan}/files/{file}', [
+        LaporanController::class,
+        'destroyFile'
+    ]);
+
+    // ==================================================
+    // ASSIGN PETUGAS - ADMIN
+    // ==================================================
+
+    Route::put('/laporans/{laporan}/assign', [
+        LaporanController::class,
+        'assignPetugas'
+    ])->middleware('role:admin');
+
+    // ==================================================
+    // UPDATE PROGRESS - PETUGAS
+    // ==================================================
+
+    Route::put('/laporans/{laporan}/progress', [
+        LaporanController::class,
+        'updateProgress'
+    ])->middleware('role:petugas');
 
     // ==================================================
     // KATEGORI
     // ==================================================
 
-    // Tambah kategori
-    Route::post(
-        '/kategoris',
-        [KategoriController::class, 'store']
-    );
+    Route::post('/kategoris', [
+        KategoriController::class,
+        'store'
+    ]);
 
-    // Update kategori menggunakan PUT
-    Route::put(
-        '/kategoris/{kategori}',
-        [KategoriController::class, 'update']
-    );
+    Route::put('/kategoris/{kategori}', [
+        KategoriController::class,
+        'update'
+    ]);
 
-    // Update kategori menggunakan PATCH
-    Route::patch(
-        '/kategoris/{kategori}',
-        [KategoriController::class, 'update']
-    );
+    Route::patch('/kategoris/{kategori}', [
+        KategoriController::class,
+        'update'
+    ]);
 
-    // Hapus kategori
-    Route::delete(
-        '/kategoris/{kategori}',
-        [KategoriController::class, 'destroy']
-    );
-
+    Route::delete('/kategoris/{kategori}', [
+        KategoriController::class,
+        'destroy'
+    ]);
 
     // ==================================================
     // TANGGAPAN / KOMENTAR
     // ==================================================
 
-    // Membuat komentar
-    Route::post(
-        '/laporans/{laporan}/tanggapans',
-        [TanggapanController::class, 'store']
-    );
-
+    Route::post('/laporans/{laporan}/tanggapans', [
+        TanggapanController::class,
+        'store'
+    ]);
 
     // ==================================================
     // LIKE / DISLIKE KOMENTAR
     // ==================================================
 
-    Route::post(
-        '/tanggapans/{tanggapan}/reaction',
-        [TanggapanReactionController::class, 'react']
-    );
-
+    Route::post('/tanggapans/{tanggapan}/reaction', [
+        TanggapanReactionController::class,
+        'react'
+    ]);
 
     // ==================================================
     // FEEDBACK
     // ==================================================
 
-    // Semua feedback untuk admin
-    Route::get(
-        '/feedbacks',
-        [FeedbackController::class, 'index']
-    );
+    Route::get('/feedbacks', [
+        FeedbackController::class,
+        'index'
+    ]);
 
-    // Mengirim feedback
-    Route::post(
-        '/feedbacks',
-        [FeedbackController::class, 'store']
-    );
+    Route::post('/feedbacks', [
+        FeedbackController::class,
+        'store'
+    ]);
 
-    // Update feedback
-    Route::put(
-        '/feedbacks/{feedback}',
-        [FeedbackController::class, 'update']
-    );
+    Route::put('/feedbacks/{feedback}', [
+        FeedbackController::class,
+        'update'
+    ]);
 
-    // Hapus feedback
-    Route::delete(
-        '/feedbacks/{feedback}',
-        [FeedbackController::class, 'destroy']
-    );
-
+    Route::delete('/feedbacks/{feedback}', [
+        FeedbackController::class,
+        'destroy'
+    ]);
 
     // ==================================================
     // NOTIFIKASI
     // ==================================================
 
-    // Daftar notifikasi
-    Route::get(
-        '/notifikasis',
-        [NotifikasiController::class, 'index']
-    );
+    Route::get('/notifikasis', [
+        NotifikasiController::class,
+        'index'
+    ]);
 
-    // Tandai satu notifikasi sudah dibaca
-    Route::put(
-        '/notifikasis/{notifikasi}/read',
-        [NotifikasiController::class, 'markAsRead']
-    );
+    Route::put('/notifikasis/{notifikasi}/read', [
+        NotifikasiController::class,
+        'markAsRead'
+    ]);
 
-    // Tandai semua notifikasi sudah dibaca
-    Route::put(
-        '/notifikasis/read-all',
-        [NotifikasiController::class, 'markAllAsRead']
-    );
-
+    Route::put('/notifikasis/read-all', [
+        NotifikasiController::class,
+        'markAllAsRead'
+    ]);
 
     // ==================================================
     // KELOLA PENGGUNA
     // ==================================================
 
-    // Semua pengguna
-    Route::get(
-        '/users',
-        [UserController::class, 'index']
-    );
+    Route::get('/users', [
+        UserController::class,
+        'index'
+    ]);
 
-    // Aktif / nonaktifkan pengguna
-    Route::put(
-        '/users/{user}/toggle-status',
-        [UserController::class, 'toggleStatus']
-    );
+    // Daftar petugas - ADMIN
+    Route::get('/users/petugas', [
+        UserController::class,
+        'petugas'
+    ])->middleware('role:admin');
 
-    // Hapus pengguna
-    Route::delete(
-        '/users/{user}',
-        [UserController::class, 'destroy']
-    );
+    // Buat akun petugas - ADMIN
+    Route::post('/users/petugas', [
+        UserController::class,
+        'storePetugas'
+    ])->middleware('role:admin');
 
+    // Aktif / nonaktif akun
+    Route::put('/users/{user}/toggle-status', [
+        UserController::class,
+        'toggleStatus'
+    ]);
+
+    // Hapus user
+    Route::delete('/users/{user}', [
+        UserController::class,
+        'destroy'
+    ]);
 });

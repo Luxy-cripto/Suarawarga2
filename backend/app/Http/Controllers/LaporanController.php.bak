@@ -2,15 +2,12 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Exports\LaporanExport;
 use App\Http\Controllers\Controller;
 use App\Models\Laporan;
 use App\Models\LaporanFile;
 use App\Models\LaporanLog;
-use App\Models\Notifikasi;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 
 class LaporanController extends Controller
 {
@@ -19,7 +16,6 @@ class LaporanController extends Controller
     // ======================================================
 
     const MAX_FOTO = 5;
-    const DEADLINE_HARI = 3;
 
     // ======================================================
     // GET /api/laporans
@@ -41,39 +37,20 @@ class LaporanController extends Controller
         return response()->json($laporans);
     }
 
-    // ======================================================
-    // GET /api/laporans/export
-    // Export laporan ke Excel
-    // ======================================================
-
-    public function export(Request $request)
+    public function tugasSaya(Request $request)
     {
-        $status = $request->query('status', 'semua');
+        $laporans = Laporan::with([
+            'user',
+            'kategoriRelasi',
+            'petugas',
+            'files',
+            'logs.user',
+        ])
+            ->where('petugas_id', $request->user()->id)
+            ->latest()
+            ->get();
 
-        if (!in_array($status, [
-            'semua',
-            'baru',
-            'diproses',
-            'selesai',
-            'ditolak',
-        ])) {
-            return response()->json([
-                'message' => 'Status export tidak valid.'
-            ], 422);
-        }
-
-        $namaFile = match ($status) {
-            'baru' => 'laporan-menunggu-suarawarga.xlsx',
-            'diproses' => 'laporan-diproses-suarawarga.xlsx',
-            'selesai' => 'laporan-selesai-suarawarga.xlsx',
-            'ditolak' => 'laporan-ditolak-suarawarga.xlsx',
-            default => 'laporan-warga-suarawarga.xlsx',
-        };
-
-        return Excel::download(
-            new LaporanExport($status),
-            $namaFile
-        );
+        return response()->json($laporans);
     }
 
     // ======================================================
@@ -86,20 +63,27 @@ class LaporanController extends Controller
         $validated = $request->validate([
             'judul' => 'required|string|max:255',
             'deskripsi' => 'required|string',
+
             'kategori_id' => [
                 'required',
                 'exists:kategoris,id',
             ],
+
             'lokasi' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+
+            // Foto lama / single
             'foto' => [
                 'nullable',
                 'image',
                 'mimes:jpeg,png,jpg,webp',
                 'max:2048',
             ],
+
+            // Foto banyak
             'fotos' => 'nullable|array|max:' . self::MAX_FOTO,
+
             'fotos.*' => [
                 'image',
                 'mimes:jpeg,png,jpg,webp',
@@ -120,6 +104,7 @@ class LaporanController extends Controller
             $fotoFiles = $request->file('fotos');
         }
 
+        // Support foto single lama
         if ($request->hasFile('foto')) {
             array_unshift(
                 $fotoFiles,
@@ -158,9 +143,14 @@ class LaporanController extends Controller
         // ==================================================
 
         foreach ($fotoFiles as $index => $file) {
+
+            // Foto pertama sudah disimpan di atas
             $path = $index === 0
                 ? $validated['foto']
-                : $file->store('laporan-foto', 'public');
+                : $file->store(
+                    'laporan-foto',
+                    'public'
+                );
 
             LaporanFile::create([
                 'laporan_id' => $laporan->id,
@@ -177,12 +167,14 @@ class LaporanController extends Controller
         $this->catatLog(
             $laporan,
             'dibuat',
-            'Laporan dibuat oleh ' . $request->user()->name,
+            'Laporan dibuat oleh ' .
+                $request->user()->name,
             $request->user()->id
         );
 
         return response()->json([
             'message' => 'Laporan berhasil dibuat',
+
             'data' => $laporan->load([
                 'user',
                 'kategoriRelasi',
@@ -196,6 +188,10 @@ class LaporanController extends Controller
     // ======================================================
     // GET /api/laporans/tugas-saya
     // Laporan yang ditugaskan ke petugas login
+    //
+    // PENTING:
+    // Route ini harus berada sebelum
+    // /laporans/{laporan} di routes/api.php
     // ======================================================
 
     public function tugasSaya(Request $request)
@@ -249,37 +245,47 @@ class LaporanController extends Controller
     ) {
         $validated = $request->validate([
             'judul' => 'sometimes|string|max:255',
+
             'deskripsi' => 'sometimes|string',
+
             'kategori_id' => [
                 'sometimes',
                 'exists:kategoris,id',
             ],
+
             'lokasi' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
+
             'status' => [
                 'sometimes',
                 'in:baru,diproses,selesai,ditolak',
             ],
+
             'alasan_ditolak' => [
                 'nullable',
                 'string',
                 'max:1000',
                 'required_if:status,ditolak',
             ],
+
             'foto' => [
                 'nullable',
                 'image',
                 'mimes:jpeg,png,jpg,webp',
                 'max:2048',
             ],
+
             'fotos' => 'nullable|array',
+
             'fotos.*' => [
                 'image',
                 'mimes:jpeg,png,jpg,webp',
                 'max:2048',
             ],
+
             'hapus_file_ids' => 'nullable|array',
+
             'hapus_file_ids.*' => [
                 'integer',
                 'exists:laporan_files,id',
@@ -293,6 +299,7 @@ class LaporanController extends Controller
         // ==================================================
 
         if (!empty($validated['hapus_file_ids'])) {
+
             $files = $laporan
                 ->files()
                 ->whereIn(
@@ -339,6 +346,7 @@ class LaporanController extends Controller
         }
 
         if (count($fotoFiles) > 0) {
+
             $urutanAwal =
                 $laporan->files()->max('urutan');
 
@@ -349,12 +357,17 @@ class LaporanController extends Controller
 
             $fotoLegacyDisimpan = false;
 
-            foreach ($fotoFiles as $index => $file) {
+            foreach (
+                $fotoFiles as $index => $file
+            ) {
+
                 $path = $file->store(
                     'laporan-foto',
                     'public'
                 );
 
+                // Jika kolom foto lama masih kosong,
+                // gunakan foto pertama sebagai foto legacy.
                 if (
                     !$laporan->foto &&
                     !$fotoLegacyDisimpan
@@ -367,35 +380,13 @@ class LaporanController extends Controller
                     'laporan_id' => $laporan->id,
                     'path' => $path,
                     'tipe' => 'sebelum',
-                    'urutan' => $urutanAwal + $index,
+                    'urutan' =>
+                        $urutanAwal + $index,
                 ]);
             }
         }
 
         unset($validated['fotos']);
-
-        // ==================================================
-        // UPDATE TIMELINE
-        // ==================================================
-
-        if (
-            isset($validated['status']) &&
-            $validated['status'] !== $statusSebelum
-        ) {
-            if (
-                $validated['status'] === 'diproses' &&
-                !$laporan->started_at
-            ) {
-                $validated['started_at'] = now();
-            }
-
-            if (
-                $validated['status'] === 'selesai' &&
-                !$laporan->completed_at
-            ) {
-                $validated['completed_at'] = now();
-            }
-        }
 
         // ==================================================
         // UPDATE LAPORAN
@@ -404,13 +395,14 @@ class LaporanController extends Controller
         $laporan->update($validated);
 
         // ==================================================
-        // LOG + NOTIFIKASI STATUS
+        // LOG PERUBAHAN STATUS
         // ==================================================
 
         if (
             isset($validated['status']) &&
             $validated['status'] !== $statusSebelum
         ) {
+
             $keterangan =
                 'Status diubah dari ' .
                 $statusSebelum .
@@ -432,67 +424,12 @@ class LaporanController extends Controller
                 $keterangan,
                 $request->user()->id
             );
-
-            if ($validated['status'] === 'diproses') {
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan sedang diproses',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" sedang diproses oleh petugas.'
-                );
-            }
-
-            if ($validated['status'] === 'selesai') {
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan selesai',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" telah selesai dikerjakan.'
-                );
-            }
-
-            if ($validated['status'] === 'ditolak') {
-                $alasan =
-                    $validated['alasan_ditolak'] ??
-                    'Tidak ada alasan yang diberikan.';
-
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan ditolak',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" ditolak. Alasan: ' .
-                        $alasan
-                );
-            }
-        }
-
-        // ==================================================
-        // LOG + NOTIFIKASI FOTO BARU
-        // ==================================================
-
-        if (count($fotoFiles) > 0) {
-            $this->catatLog(
-                $laporan,
-                'foto_ditambahkan',
-                count($fotoFiles) .
-                    ' foto ditambahkan ke laporan.',
-                $request->user()->id
-            );
-
-            $this->kirimNotifikasi(
-                $laporan,
-                'Ada update laporan',
-                'Laporan "' .
-                    $laporan->judul .
-                    '" mendapatkan tambahan foto.'
-            );
         }
 
         return response()->json([
-            'message' => 'Laporan berhasil diperbarui',
+            'message' =>
+                'Laporan berhasil diperbarui',
+
             'data' => $laporan->load([
                 'user',
                 'kategoriRelasi',
@@ -523,30 +460,15 @@ class LaporanController extends Controller
             $validated['petugas_id']
         );
 
-        if (
-            !$petugas ||
-            $petugas->role !== 'petugas'
-        ) {
+        if ($petugas->role !== 'petugas') {
             return response()->json([
                 'message' =>
                     'User yang dipilih bukan petugas.',
             ], 422);
         }
 
-        // ==================================================
-        // TIMELINE PENGERJAAN
-        // ==================================================
-
-        $assignedAt = now();
-
-        $deadlineAt = now()->addDays(
-            self::DEADLINE_HARI
-        );
-
         $laporan->update([
             'petugas_id' => $petugas->id,
-            'assigned_at' => $assignedAt,
-            'deadline_at' => $deadlineAt,
         ]);
 
         // ==================================================
@@ -557,44 +479,15 @@ class LaporanController extends Controller
             $laporan,
             'diassign',
             'Laporan ditugaskan kepada ' .
-                $petugas->name .
-                '. Batas pengerjaan ' .
-                self::DEADLINE_HARI .
-                ' hari.',
+                $petugas->name,
             $request->user()->id
-        );
-
-        // ==================================================
-        // NOTIFIKASI KE PEMILIK LAPORAN
-        // ==================================================
-
-        $this->kirimNotifikasi(
-            $laporan,
-            'Petugas ditugaskan',
-            'Laporan "' .
-                $laporan->judul .
-                '" telah ditugaskan kepada petugas untuk ditindaklanjuti.'
-        );
-
-        // ==================================================
-        // NOTIFIKASI KE PETUGAS
-        // ==================================================
-
-        $this->kirimNotifikasiKeUser(
-            $petugas->id,
-            $laporan,
-            'Ada tugas laporan baru',
-            'Kamu mendapatkan tugas untuk menangani laporan "' .
-                $laporan->judul .
-                '". Batas pengerjaan ' .
-                self::DEADLINE_HARI .
-                ' hari.'
         );
 
         return response()->json([
             'message' =>
                 'Laporan berhasil ditugaskan kepada ' .
                 $petugas->name,
+
             'data' => $laporan->load([
                 'user',
                 'kategoriRelasi',
@@ -614,10 +507,8 @@ class LaporanController extends Controller
         Request $request,
         Laporan $laporan
     ) {
-        // ==================================================
-        // CEK PETUGAS
-        // ==================================================
-
+        // Pastikan laporan memang milik petugas
+        // yang sedang login.
         if (
             $laporan->petugas_id !==
             $request->user()->id
@@ -633,15 +524,20 @@ class LaporanController extends Controller
                 'required',
                 'in:diproses,selesai,ditolak',
             ],
-            'catatan' => 'nullable|string|max:1000',
+
+            'catatan' =>
+                'nullable|string|max:1000',
+
             'alasan_ditolak' => [
                 'nullable',
                 'string',
                 'max:1000',
                 'required_if:status,ditolak',
             ],
+
             'fotos' =>
                 'nullable|array|max:' . self::MAX_FOTO,
+
             'fotos.*' => [
                 'image',
                 'mimes:jpeg,png,jpg,webp',
@@ -649,47 +545,19 @@ class LaporanController extends Controller
             ],
         ]);
 
-        $statusSebelum = $laporan->status;
-
         // ==================================================
-        // SIAPKAN DATA UPDATE
+        // UPDATE STATUS
         // ==================================================
 
-        $dataUpdate = [
-            'status' => $validated['status'],
+        $laporan->update([
+            'status' =>
+                $validated['status'],
+
             'alasan_ditolak' =>
                 $validated['status'] === 'ditolak'
                     ? ($validated['alasan_ditolak'] ?? null)
                     : null,
-        ];
-
-        // ==================================================
-        // MULAI DIPROSES
-        // ==================================================
-
-        if (
-            $validated['status'] === 'diproses' &&
-            !$laporan->started_at
-        ) {
-            $dataUpdate['started_at'] = now();
-        }
-
-        // ==================================================
-        // SELESAI
-        // ==================================================
-
-        if (
-            $validated['status'] === 'selesai' &&
-            !$laporan->completed_at
-        ) {
-            $dataUpdate['completed_at'] = now();
-        }
-
-        // ==================================================
-        // UPDATE LAPORAN
-        // ==================================================
-
-        $laporan->update($dataUpdate);
+        ]);
 
         // ==================================================
         // LOG STATUS
@@ -705,6 +573,7 @@ class LaporanController extends Controller
             $validated['status'] === 'ditolak' &&
             !empty($validated['alasan_ditolak'])
         ) {
+
             $keterangan .=
                 '. Alasan: ' .
                 $validated['alasan_ditolak'];
@@ -714,60 +583,18 @@ class LaporanController extends Controller
             $validated['status'] !== 'ditolak' &&
             !empty($validated['catatan'])
         ) {
+
             $keterangan .=
                 '. Catatan: ' .
                 $validated['catatan'];
         }
 
-        // ==================================================
-        // LOG + NOTIFIKASI STATUS
-        // ==================================================
-
-        if (
-            $validated['status'] !== $statusSebelum
-        ) {
-            $this->catatLog(
-                $laporan,
-                'status_berubah',
-                $keterangan,
-                $request->user()->id
-            );
-
-            if ($validated['status'] === 'diproses') {
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan sedang diproses',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" sedang diproses oleh petugas.'
-                );
-            }
-
-            if ($validated['status'] === 'selesai') {
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan selesai',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" telah selesai dikerjakan oleh petugas.'
-                );
-            }
-
-            if ($validated['status'] === 'ditolak') {
-                $alasan =
-                    $validated['alasan_ditolak'] ??
-                    'Tidak ada alasan yang diberikan.';
-
-                $this->kirimNotifikasi(
-                    $laporan,
-                    'Laporan ditolak',
-                    'Laporan "' .
-                        $laporan->judul .
-                        '" ditolak. Alasan: ' .
-                        $alasan
-                );
-            }
-        }
+        $this->catatLog(
+            $laporan,
+            'status_berubah',
+            $keterangan,
+            $request->user()->id
+        );
 
         // ==================================================
         // FOTO SESUDAH
@@ -776,14 +603,19 @@ class LaporanController extends Controller
         $fotoFiles = [];
 
         if ($request->hasFile('fotos')) {
-            $fotoFiles = $request->file('fotos');
+            $fotoFiles =
+                $request->file('fotos');
         }
 
         if (count($fotoFiles) > 0) {
+
             $urutanAwal =
                 $laporan
                     ->files()
-                    ->where('tipe', 'sesudah')
+                    ->where(
+                        'tipe',
+                        'sesudah'
+                    )
                     ->max('urutan');
 
             $urutanAwal =
@@ -791,7 +623,10 @@ class LaporanController extends Controller
                     ? 0
                     : $urutanAwal + 1;
 
-            foreach ($fotoFiles as $index => $file) {
+            foreach (
+                $fotoFiles as $index => $file
+            ) {
+
                 $path = $file->store(
                     'laporan-foto',
                     'public'
@@ -818,23 +653,12 @@ class LaporanController extends Controller
                     $request->user()->name,
                 $request->user()->id
             );
-
-            // ==================================================
-            // NOTIFIKASI FOTO
-            // ==================================================
-
-            $this->kirimNotifikasi(
-                $laporan,
-                'Ada update pengerjaan',
-                'Petugas memperbarui laporan "' .
-                    $laporan->judul .
-                    '" dan menambahkan bukti pengerjaan.'
-            );
         }
 
         return response()->json([
             'message' =>
                 'Progress laporan berhasil diperbarui',
+
             'data' => $laporan->load([
                 'user',
                 'kategoriRelasi',
@@ -867,8 +691,11 @@ class LaporanController extends Controller
         $file->delete();
 
         return response()->json([
-            'message' => 'Foto berhasil dihapus',
-            'data' => $laporan->load('files'),
+            'message' =>
+                'Foto berhasil dihapus',
+
+            'data' =>
+                $laporan->load('files'),
         ]);
     }
 
@@ -902,47 +729,6 @@ class LaporanController extends Controller
             'tipe' => $tipe,
             'keterangan' => $keterangan,
             'user_id' => $userId,
-        ]);
-    }
-
-    // ======================================================
-    // KIRIM NOTIFIKASI KE PEMILIK LAPORAN
-    // ======================================================
-
-    private function kirimNotifikasi(
-        Laporan $laporan,
-        string $judul,
-        string $pesan
-    ): void {
-        if (!$laporan->user_id) {
-            return;
-        }
-
-        Notifikasi::create([
-            'user_id' => $laporan->user_id,
-            'laporan_id' => $laporan->id,
-            'judul' => $judul,
-            'pesan' => $pesan,
-            'is_read' => false,
-        ]);
-    }
-
-    // ======================================================
-    // KIRIM NOTIFIKASI KE USER TERTENTU
-    // ======================================================
-
-    private function kirimNotifikasiKeUser(
-        int $userId,
-        Laporan $laporan,
-        string $judul,
-        string $pesan
-    ): void {
-        Notifikasi::create([
-            'user_id' => $userId,
-            'laporan_id' => $laporan->id,
-            'judul' => $judul,
-            'pesan' => $pesan,
-            'is_read' => false,
         ]);
     }
 }

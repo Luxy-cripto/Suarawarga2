@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TanggapanReaction extends Model
 {
@@ -12,13 +13,19 @@ class TanggapanReaction extends Model
         'type',
     ];
 
-    public function tanggapan()
+    public function tanggapan(): BelongsTo
     {
-        return $this->belongsTo(Tanggapan::class);
+        return $this->belongsTo(
+            Tanggapan::class,
+            'tanggapan_id'
+        );
     }
 
-    public function user()
+    public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(
+            User::class,
+            'user_id'
+        );
     }
 }
